@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="352" viewBox="0 0 900 352" role="img" aria-labelledby="t d">
+  <title id="t">clx --status and a mid-session account switch</title>
+  <desc id="d">clx lists three Claude Code accounts with their 5-hour and 7-day usage, picks the one with the most room, and later prints a line saying the running session moved from Work to Personal.</desc>
+  <style>
+    .term { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; fill: #c9d1d9; white-space: pre; }
+    .dim { fill: #8b949e; }
+    .prompt { fill: #7ee787; }
+    .cmd { fill: #f0f6fc; font-weight: 600; }
+    .ok { fill: #7ee787; }
+    .warn { fill: #e3b341; }
+    .bad { fill: #ff7b72; }
+    .move { fill: #79c0ff; }
+    .note { fill: #8b949e; font-style: italic; }
+  </style>
+  <rect width="900" height="352" rx="10" fill="#0d1117"/>
+  <rect width="900" height="30" rx="10" fill="#161b22"/>
+  <rect y="20" width="900" height="10" fill="#161b22"/>
+  <circle cx="20" cy="15" r="6" fill="#ff5f57"/>
+  <circle cx="40" cy="15" r="6" fill="#febc2e"/>
+  <circle cx="60" cy="15" r="6" fill="#28c840"/>
+  <text x="450" y="19" text-anchor="middle" class="term dim" font-size="12">~/project</text>
+  <g class="term" xml:space="preserve">
+    <text x="20" y="58"><tspan class="prompt">$</tspan> <tspan class="cmd">clx --status</tspan></text>
+    <text x="20" y="80" class="dim">   ACCOUNT   EMAIL             5H   7D   RESET-IN  CACHE  STATUS</text>
+    <text x="20" y="100">   Personal  you@home.example  <tspan class="ok">12%</tspan>  <tspan class="ok">34%</tspan>  -         51s    ok</text>
+    <text x="20" y="120">   Side      you@side.example  <tspan class="ok">0%</tspan>   <tspan class="warn">78%</tspan>  -         71s    ok</text>
+    <text x="20" y="140">P  Work      you@work.example  <tspan class="bad">93%</tspan>  <tspan class="warn">61%</tspan>  -         41s    ok</text>
+    <text x="20" y="168">threshold 90%  |  would launch: <tspan class="ok">Personal</tspan> (Work 5h 93% ≥ 90)  |  next: Side (worst 7d 78%)</text>
+    <text x="20" y="200"><tspan class="prompt">$</tspan> <tspan class="cmd">clx</tspan>                    <tspan class="note"># Claude Code starts on Personal</tspan></text>
+    <text x="20" y="232" class="note">  … two hours of work later, Personal reaches 90% in the middle of a task …</text>
+    <text x="20" y="264" class="move">[clx] this session moved from Personal (5h 91%) to Side (worst 7d 78%);</text>
+    <text x="20" y="284" class="move">      nothing to do, continue normally.</text>
+    <text x="20" y="316" class="note">  same process, same conversation, subagents still running: only the account changed</text>
+  </g>
+</svg>

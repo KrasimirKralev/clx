@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Syntax
+        run: |
+          python3 -m py_compile clx clx-move
+          bash -n install.sh cc-handoff.sh cm-login test/test-install.sh
+
+      - name: Tests (throw-away HOME, fake tokens, no network)
+        run: |
+          python3 -I test/test-dead-auth.py
+          python3 -I test/test-no-5h.py
+          python3 -I test/test-move.py
+          python3 -I test/test-launch.py
+          bash test/test-install.sh

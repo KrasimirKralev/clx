@@ -1,0 +1,63 @@
+name: release
+
+# Push a tag like v1.0.1 to publish clx.tar.gz. The tag must match CLX_VERSION in clx.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: The tag matches CLX_VERSION
+        run: |
+          v=$(sed -n 's/^CLX_VERSION = "\(.*\)"$/\1/p' clx)
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME but CLX_VERSION is $v"; exit 1; }
+
+      - name: Tests
+        run: |
+          python3 -I test/test-dead-auth.py
+          python3 -I test/test-no-5h.py
+          python3 -I test/test-move.py
+          python3 -I test/test-launch.py
+          bash test/test-install.sh
+
+  # Packing files runs none of the project's code, so only this job holds the write token.
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Pack clx.tar.gz
+        run: |
+          mkdir -p out/clx
+          cp -a clx clx-move cm-login cc-handoff.sh install.sh README.md LICENSE SECURITY.md test out/clx/
+          tar -C out -czf clx.tar.gz --exclude='__pycache__' clx
+          sha256sum clx.tar.gz > clx.tar.gz.sha256
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          make_latest: true
+          generate_release_notes: true
+          files: |
+            clx.tar.gz
+            clx.tar.gz.sha256
+          body: |
+            Install or update (Linux):
+            ```
+            curl -fsSL https://github.com/KrasimirKralev/clx/releases/latest/download/clx.tar.gz | tar xz
+            ./clx/install.sh
+            ```
