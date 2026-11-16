@@ -18,10 +18,12 @@ You'll get an answer within a week. Fixes are released as a new tag, with a note
 - **Network:** only `GET https://api.anthropic.com/api/oauth/usage`, with each account's own token. clx never refreshes or sends a token anywhere else.
 - **Files:**
   - `~/.claude/cc.json`, `cc-usage-cache.json`, `active-account.json` and `clx-handoff.log`
-  - the account dirs `~/.claude-*`: it adds symlinks and its own `.claude.json` keys
+  - `~/.claude.json`: when a session ends, folders it added are copied back
+  - the account dirs `~/.claude-*`: it adds symlinks and its own `.claude.json` keys, and keeps `.credentials.json.prev`, the login a heal replaced (0600)
   - `~/.clx-sessions/<pid>`: one dir per running session
   - `~/.local/bin/{clx,clx-move,cm-login}` and `~/.claude/hooks/cc-handoff.sh`, through `install.sh`
   - `~/.claude/settings.json` and, with `--alias`, `~/.bashrc`, through `install.sh`. Both are backed up first.
+  - Files are created `0600`. A file that already exists keeps its mode.
 - **Processes:** one small watcher per running session (`clx --heal-watch`). It exits when the session ends.
 
 ## Supported versions

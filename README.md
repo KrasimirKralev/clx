@@ -22,7 +22,7 @@ clx takes care of it:
 - **Picks the account at launch.** `clx` starts on the account with the most room on every window the server reports: the 5-hour, weekly and per-model limits.
 - **Moves a running session.** When the account reaches your threshold (90% by default), clx re-points the same session to the next account. The process, the conversation, background tasks and subagents carry on.
 - **One shared setup.** Every account sees the same `settings.json`, `CLAUDE.md`, skills, agents, plugins, hooks and project history.
-- **Plain and inspectable.** One Python file with no dependencies, a bash hook and an installer. It writes only under `~/.claude`, `~/.claude-*`, `~/.clx-sessions` and `~/.local/bin`. `--uninstall` removes the programs and the hook.
+- **Plain and inspectable.** One Python file with no dependencies, a bash hook and an installer. Everything it writes is listed in [SECURITY.md](SECURITY.md). `--uninstall` removes the programs and the hook.
 
 ## Quick start
 
@@ -45,7 +45,7 @@ Claude Code keeps each login in a config dir (`CLAUDE_CONFIG_DIR`). It reads tha
 
 ```mermaid
 flowchart LR
-  CC["Claude Code<br/>(one running session)"] -->|CLAUDE_CONFIG_DIR| S["~/.clx-sessions/&lt;pid&gt;"]
+  CC["Claude Code<br/>(one running session)"] -->|CLAUDE_CONFIG_DIR| S["~/.clx-sessions/PID"]
   S -->|".credentials.json (symlink)"| W["~/.claude-work"]
   S -. "re-pointed at the limit" .-> P["~/.claude-personal"]
   H["hook + watcher"] -->|"usage cache, 3 min"| S
@@ -101,9 +101,9 @@ What clx does on the wire:
 ## Security and privacy
 
 - **Network.** clx sends one kind of request: a `GET` to `https://api.anthropic.com/api/oauth/usage` with each account's token: every 3 minutes per account, and every 30 s for an account a session is on once it nears the threshold. It never sends a token anywhere else. It doesn't refresh tokens itself; Claude Code does that.
-- **Files.** clx writes only under `~/.claude`, `~/.claude-*` and `~/.clx-sessions`. Its files are `0600` and its dirs `0700`. Logs and notices name accounts but never contain tokens.
+- **Files.** clx writes to `~/.claude.json`, `~/.claude`, `~/.claude-*` and `~/.clx-sessions`; the installer also writes `~/.local/bin`, and `~/.bashrc` with `--alias`. It creates its files `0600` and its dirs `0700`. Logs and notices name accounts but never contain tokens. When clx copies a refreshed login into an account dir, it keeps the replaced one beside it as `.credentials.json.prev`.
 - **Folder trust.** clx copies folder trust from your own `~/.claude.json`. It never marks a folder trusted that you haven't accepted, and a grant that exists only in an account dir never flows back.
-- **Reviewed.** Before the first release, an independent review covered token handling, network, file modes, injection, symlinks and the installer. Every fix has a test in `test/test-security.py`. Two known races that can force a re-login are listed in the issues.
+- **Reviewed.** Before the first release, an independent review covered token handling, network, file modes, injection, symlinks and the installer. Every fix has a test in `test/test-security.py`. Open items, including races that can force a re-login, are listed in [issue #1](https://github.com/KrasimirKralev/clx/issues/1).
 - **Reporting.** See [SECURITY.md](SECURITY.md) to report a vulnerability privately.
 
 ## Limits
@@ -133,7 +133,7 @@ Yes. It is the same process. A move only changes which login the next request us
 ./clx/install.sh --uninstall
 ```
 
-This removes the programs, the hook and its `settings.json` entries, and the `--alias` block. Your `~/.claude-*` account dirs and logins stay as they are.
+This removes the programs, the hook and its `settings.json` entries, and the `--alias` block. Your `~/.claude-*` account dirs and logins stay as they are, including any `.credentials.json.prev`; delete those by hand if you want them gone.
 
 ## Tests
 
