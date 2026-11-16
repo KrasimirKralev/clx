@@ -27,6 +27,7 @@ jobs:
           python3 -I test/test-no-5h.py
           python3 -I test/test-move.py
           python3 -I test/test-launch.py
+          python3 -I test/test-security.py
           bash test/test-install.sh
 
   # Packing files runs none of the project's code, so only this job holds the write token.

@@ -22,7 +22,7 @@ clx takes care of it:
 - **Picks the account at launch.** `clx` starts on the account with the most room on every window the server reports: the 5-hour, weekly and per-model limits.
 - **Moves a running session.** When the account reaches your threshold (90% by default), clx re-points the same session to the next account. The process, the conversation, background tasks and subagents carry on.
 - **One shared setup.** Every account sees the same `settings.json`, `CLAUDE.md`, skills, agents, plugins, hooks and project history.
-- **Plain and inspectable.** One Python file with no dependencies, a bash hook and an installer. It changes nothing outside the paths listed below. `--uninstall` removes all of it.
+- **Plain and inspectable.** One Python file with no dependencies, a bash hook and an installer. It writes only under `~/.claude`, `~/.claude-*`, `~/.clx-sessions` and `~/.local/bin`. `--uninstall` removes the programs and the hook.
 
 ## Quick start
 
@@ -37,7 +37,7 @@ clx --status                      # every account, its usage, and which one clx 
 clx                               # start Claude Code on the account with the most room
 ```
 
-Your existing `~/.claude` login counts as an account. Every other `clx` argument goes straight to `claude`, so `clx -c`, `clx -p "…"` and `clx --model …` work as usual.
+The installer also runs `clx --init`. That links your shared settings into every `~/.claude-*` dir, and anything it replaces is kept as `*.pre-clx`. Your existing `~/.claude` login counts as an account. Every other `clx` argument goes straight to `claude`, so `clx -c`, `clx -p "…"` and `clx --model …` work as usual.
 
 ## How it works
 
@@ -102,7 +102,8 @@ What clx does on the wire:
 
 - **Network.** clx sends one kind of request: a `GET` to `https://api.anthropic.com/api/oauth/usage` with each account's token: every 3 minutes per account, and every 30 s for an account a session is on once it nears the threshold. It never sends a token anywhere else. It doesn't refresh tokens itself; Claude Code does that.
 - **Files.** clx writes only under `~/.claude`, `~/.claude-*` and `~/.clx-sessions`. Its files are `0600` and its dirs `0700`. Logs and notices name accounts but never contain tokens.
-- **Folder trust.** `clx --init` copies folder trust from your own `~/.claude.json`. It never marks a folder trusted that you haven't accepted.
+- **Folder trust.** clx copies folder trust from your own `~/.claude.json`. It never marks a folder trusted that you haven't accepted, and a grant that exists only in an account dir never flows back.
+- **Reviewed.** Before the first release, an independent review covered token handling, network, file modes, injection, symlinks and the installer. Every fix has a test in `test/test-security.py`. Two known races that can force a re-login are listed in the issues.
 - **Reporting.** See [SECURITY.md](SECURITY.md) to report a vulnerability privately.
 
 ## Limits
@@ -143,6 +144,7 @@ python3 test/test-dead-auth.py   # a dead login is never a launch choice or a ha
 python3 test/test-no-5h.py       # decisions when the server reports no 5-hour window
 python3 test/test-move.py        # clx-move
 python3 test/test-launch.py      # which account a launch picks when every one is spent
+python3 test/test-security.py    # one check per fixed security finding
 bash    test/test-install.sh     # install, first launch, second account, folder trust, uninstall
 ```
 
