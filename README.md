@@ -71,6 +71,7 @@ flowchart LR
 | `clx-move <name>` | Move every running clx session to one account now. |
 | `cm-login <name> [email]` | Log an account into `~/.claude-<name>`. If your browser is already signed in to another account, open the link in a private window. |
 | `cm-login status` | Who is logged in to which dir. |
+| `clx-openclaw setup` / `status` / `doctor` / `remove` | Run an OpenClaw gateway's Claude CLI turns through clx. See [OpenClaw agents](#openclaw-agents). |
 
 ### Settings
 
@@ -83,7 +84,39 @@ flowchart LR
 - `threshold`: the usage % at which a session moves on.
 - `primary`: the account to prefer while it is under the threshold. With no primary, clx starts on the account with the most room.
 
-`CC_THRESHOLD` and `CC_PRIMARY` override them for one run. `CLX_NO_NOTIFY=1` turns off the desktop popup a move shows.
+`CC_THRESHOLD` and `CC_PRIMARY` override them for one run. `CLX_NO_NOTIFY=1` turns off the desktop popup a move shows. `CLX_NO_FAIL_SCAN=1` stops the watcher from reading failed turns out of the transcript.
+
+When a caller hands Claude Code a token on a file descriptor (`CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`), that token beats every login clx could choose. By default, clx then steps aside and runs the CLI on the caller's choice. With `CLX_DROP_INJECTED_TOKEN=1`, clx chooses the account itself and removes that variable before it starts the CLI.
+
+## OpenClaw agents
+
+An OpenClaw gateway can run its agents' turns through Claude Code, with the Claude CLI backend. `clx-openclaw` puts clx on that route. Each CLI session the gateway starts then runs on the account with the most room. When a turn fails on a usage limit or a refused login, the session moves to another account and the next turn answers there.
+
+```bash
+clx-openclaw setup --with-skill   # write the shim and the gateway's drop-in; it restarts nothing
+systemctl --user daemon-reload && systemctl --user restart openclaw-gateway.service   # setup prints this line
+clx-openclaw doctor               # names every problem; `clx-openclaw status` shows sessions and moves
+```
+
+How it gets there:
+
+- **The route.** OpenClaw's Claude CLI backend starts the first `claude` on the gateway's PATH. `setup` makes a small shim that `claude`.
+  - If a directory of yours comes before every other `claude` on that PATH, `setup` puts a `claude` link to the shim there. Your shells and cron jobs that use that directory then go through clx too.
+  - Otherwise, or with `--no-link`, a systemd user drop-in sets the unit's PATH with the shim's directory first. It sets the same value in an environment file of clx's. systemd reads that file after every `Environment=` line, so it wins wherever the unit sets its own PATH.
+  - It never replaces a real `claude`.
+  - The drop-in also sets `CLAUDE_CODE_EXECUTABLE` to the shim, for launches through the Agent SDK or an ACP adapter.
+  - This route was verified with OpenClaw 2026.11.3 only.
+- **The shim.** It runs clx with `CLX_DROP_INJECTED_TOKEN=1`, so clx picks the login instead of a token the gateway forwards. A launch with no terminal also gets `CLX_NO_NOTIFY=1`; a person whose shell finds the link keeps clx's notices. A caller that hands over `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` has chosen the account itself: the shim then runs the CLI directly.
+- **Failed turns.** The gateway starts every CLI session with all hooks switched off. So the session's watcher reads failed requests from the transcript itself. A turn that ended "You've hit your weekly limit", or "OAuth token revoked", marks that account and moves the session at once. The scan runs in every clx session's watcher, not only the gateway's, so a terminal session that hits a limit moves at once too.
+- **The agents' skill.** With `--with-skill`, `setup` puts the skill `clx-accounts` in `~/.openclaw/skills/`. That is the shared skills folder; `--state-dir`, or `OPENCLAW_STATE_DIR`, picks another one. The skill teaches agents to read `clx --status`, what happens at a limit, how to pause and resume an account, and which files never to edit. New sessions see it within about a minute.
+- `--unit NAME` picks another gateway unit, for example `openclaw-gateway-<profile>.service`. `clx-openclaw remove` takes the link, the shim, the drop-in and the skill out again and prints the restart command.
+
+Limits:
+
+- **Only Claude CLI turns.** An agent whose model runs on OpenClaw's own runtime, with an Anthropic API key or an auth profile, never starts the CLI, so clx never rotates it. Neither does a launch that carries its own `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
+- **Systemd user units only.** Without one, `setup` writes the shim and prints the lines to add to the gateway's environment instead.
+- **The drop-in's PATH is a copy.** Run `clx-openclaw setup` again after `openclaw gateway install --force` or an OpenClaw update changes the unit's own PATH.
+- **Cron and system services have their own PATH**, usually `/usr/local/bin:/usr/bin:/bin`. A `claude` installed there, by a system-wide `npm -g` for example, is what a cron job reaches, and it bypasses clx. `clx-openclaw doctor` names every such copy. In a cron job, call the shim or `clx` by its full path.
 
 ## Use it within Anthropic's terms
 
@@ -145,6 +178,9 @@ python3 test/test-no-5h.py       # decisions when the server reports no 5-hour w
 python3 test/test-move.py        # clx-move
 python3 test/test-launch.py      # which account a launch picks when every one is spent
 python3 test/test-security.py    # one check per fixed security finding
+python3 test/test-failed-turn.py # a turn that failed on a limit or a refused login moves the session
+python3 test/test-dead-default.py # a dead or login-less dir never wins over a live login of the same account
+python3 test/test-openclaw.py    # clx-openclaw setup, status, doctor and remove (fake systemd, fake /proc)
 bash    test/test-install.sh     # install, first launch, second account, folder trust, uninstall
 ```
 

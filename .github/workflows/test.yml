@@ -20,7 +20,7 @@ jobs:
 
       - name: Syntax
         run: |
-          python3 -m py_compile clx clx-move
+          python3 -m py_compile clx clx-move clx-openclaw
           bash -n install.sh cc-handoff.sh cm-login test/test-install.sh
 
       - name: Tests (throw-away HOME, fake tokens, no network)
@@ -30,4 +30,7 @@ jobs:
           python3 -I test/test-move.py
           python3 -I test/test-launch.py
           python3 -I test/test-security.py
+          python3 -I test/test-failed-turn.py
+          python3 -I test/test-dead-default.py
+          python3 -I test/test-openclaw.py
           bash test/test-install.sh
