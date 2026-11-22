@@ -101,9 +101,11 @@ clx-openclaw doctor               # names every problem; `clx-openclaw status` s
 How it gets there:
 
 - **The route.** OpenClaw's Claude CLI backend starts the first `claude` on the gateway's PATH. `setup` makes a small shim that `claude`.
-  - If a directory of yours comes before every other `claude` on that PATH, `setup` puts a `claude` link to the shim there. Your shells and cron jobs that use that directory then go through clx too.
-  - Otherwise, or with `--no-link`, a systemd user drop-in sets the unit's PATH with the shim's directory first. It sets the same value in an environment file of clx's. systemd reads that file after every `Environment=` line, so it wins wherever the unit sets its own PATH.
+  - By default, a systemd user drop-in sets the unit's PATH with the shim's directory first. It sets the same value in an environment file of clx's. systemd reads that file after every `Environment=` line, so it wins wherever the unit sets its own PATH.
+  - `--link DIR` puts a `claude` link to the shim in DIR instead. DIR must be a directory of yours that the gateway's PATH lists before every other `claude`; otherwise `setup` refuses and says why. Your shells and cron jobs that use DIR then go through clx too.
   - It never replaces a real `claude`.
+  - A `claude` written by hand that hands over to a clx counts as going through clx. `status` and `doctor` say so and name it. `setup` takes the real CLI from behind it: its `CC_CLAUDE_BIN` if that is a real CLI, else the next `claude` on the PATH. It then puts its own shim first and leaves the hand-made one as it is.
+  - The shim's CLI is never a clx or a clx shim: that would run clx inside clx. `setup` refuses instead, `--claude PATH` included.
   - The drop-in also sets `CLAUDE_CODE_EXECUTABLE` to the shim, for launches through the Agent SDK or an ACP adapter.
   - This route was verified with OpenClaw 2026.11.3 only.
 - **The shim.** It runs clx with `CLX_DROP_INJECTED_TOKEN=1`, so clx picks the login instead of a token the gateway forwards. A launch with no terminal also gets `CLX_NO_NOTIFY=1`; a person whose shell finds the link keeps clx's notices. A caller that hands over `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` has chosen the account itself: the shim then runs the CLI directly.
@@ -114,7 +116,7 @@ How it gets there:
 Limits:
 
 - **Only Claude CLI turns.** An agent whose model runs on OpenClaw's own runtime, with an Anthropic API key or an auth profile, never starts the CLI, so clx never rotates it. Neither does a launch that carries its own `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
-- **Systemd user units only.** Without one, `setup` writes the shim and prints the lines to add to the gateway's environment instead.
+- **Systemd user units only.** Without one, `setup` writes the shim and prints the lines to add to the gateway's environment instead (or makes the `--link`).
 - **The drop-in's PATH is a copy.** Run `clx-openclaw setup` again after `openclaw gateway install --force` or an OpenClaw update changes the unit's own PATH.
 - **Cron and system services have their own PATH**, usually `/usr/local/bin:/usr/bin:/bin`. A `claude` installed there, by a system-wide `npm -g` for example, is what a cron job reaches, and it bypasses clx. `clx-openclaw doctor` names every such copy. In a cron job, call the shim or `clx` by its full path.
 

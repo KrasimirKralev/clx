@@ -26,7 +26,7 @@ You'll get an answer within a week. Fixes are released as a new tag, with a note
   - only when you run `clx-openclaw setup`:
     - the shim `~/.local/share/clx/openclaw/bin/claude` and its `state.json`
     - the drop-in `~/.config/systemd/user/<unit>.d/zz-clx-openclaw.conf` and the environment file it names, `~/.local/share/clx/openclaw/gateway.env` (only `PATH` and `CLAUDE_CODE_EXECUTABLE`), when the gateway is a systemd user unit
-    - a `claude` link to the shim in one directory of yours on the gateway's PATH, when that directory comes before every other `claude`
+    - only with `--link DIR`: a `claude` link to the shim in DIR, a directory of yours that comes before every other `claude` on the gateway's PATH
     - with `--with-skill`, `<OpenClaw state dir>/skills/clx-accounts/SKILL.md`
 
     It only overwrites or deletes files that carry its marker comment. It never restarts anything.
